@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بازی فکری فرخی</title>
+<style>
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+    body { margin: 0; min-height: 100vh; display: flex; justify-content: center; align-items: center; background: #1e1e2e; color: #cdd6f4; font-family: Tahoma, "Segoe UI", sans-serif; }
+    .game { width: 95%; max-width: 420px; text-align: center; padding: 20px; background: #2b2b3d; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    h1 { margin: 0 0 15px; color: #89b4fa; font-size: 28px; }
+    .stats { display: flex; justify-content: space-around; background: #181825; padding: 10px; border-radius: 12px; margin-bottom: 15px; font-size: 14px; }
+    .stat-item span { display: block; font-weight: bold; color: #f9e2af; font-size: 16px; margin-top: 3px; }
+    .board { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 8px; background: #11111b; border-radius: 14px; aspect-ratio: 1 / 1; touch-action: none; }
+    .tile { border: none; border-radius: 10px; background: #89b4fa; color: #11111b; font-size: clamp(18px, 6vw, 28px); font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #585b70; transition: transform 0.1s, background-color 0.2s; }
+    .tile:active { transform: translateY(2px); box-shadow: 0 2px 0 #585b70; }
+    .empty { background: #1e1e2e; cursor: default; box-shadow: inset 0 0 8px rgba(0,0,0,0.5); }
+    .controls { margin-top: 15px; }
+    button.restart { width: 100%; padding: 12px; border: none; border-radius: 10px; background: #a6e3a1; color: #11111b; font-size: 16px; font-weight: bold; cursor: pointer; }
+    button.restart:active { transform: scale(0.98); }
+    .win-message { color: #a6e3a1; font-size: 18px; font-weight: bold; margin-top: 10px; animation: pulse 1s infinite alternate; }
+    @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.03); } }
+</style>
+</head>
+<body>
+<div class="game">
+    <h1>بازی فکری فرخی</h1>
+    <div class="stats">
+        <div class="stat-item">حرکت‌ها<span id="moves">0</span></div>
+        <div class="stat-item">زمان<span id="timer">00:00</span></div>
+        <div class="stat-item">رکورد<span id="best">-</span></div>
+    </div>
+    <div id="board" class="board"></div>
+    <div id="win-area"></div>
+    <div class="controls"><button class="restart" onclick="newGame()">بازی جدید</button></div>
+</div>
+<script>
+let numbers = [], moves = 0, timerInterval = null, seconds = 0, isGameActive = false;
+let bestMoves = localStorage.getItem('farrokh_best') || null;
+if (bestMoves) document.getElementById('best').textContent = bestMoves;
+
+function startTimer() {
+    clearInterval(timerInterval); seconds = 0;
+    document.getElementById('timer').textContent = "00:00";
+    timerInterval = setInterval(() => {
+        seconds++;
+        let m = Math.floor(seconds / 60).toString().padStart(2, '0');
+        let s = (seconds % 60).toString().padStart(2, '0');
+        document.getElementById('timer').textContent = `${m}:${s}`;
+    }, 1000);
+}
+function stopTimer() { clearInterval(timerInterval); }
+function newGame() {
+    numbers = [];
+    for (let i = 1; i <= 19; i++) numbers.push(i);
+    numbers.push(0);
+    for (let i = 0; i < 400; i++) {
+        let empty = numbers.indexOf(0);
+        let possible = getPossibleMoves(empty);
+        let random = possible[Math.floor(Math.random() * possible.length)];
+        [numbers[empty], numbers[random]] = [numbers[random], numbers[empty]];
+    }
+    moves = 0; isGameActive = true;
+    document.getElementById("win-area").innerHTML = "";
+    document.getElementById("moves").textContent = moves;
+    startTimer(); draw();
+}
+function getPossibleMoves(empty) {
+    let possible = [], row = Math.floor(empty / 5), col = empty % 5;
+    if (row > 0) possible.push(empty - 5);
+    if (row < 3) possible.push(empty + 5);
+    if (col > 0) possible.push(empty - 1);
+    if (col < 4) possible.push(empty + 1);
+    return possible;
+}
+function draw() {
+    const board = document.getElementById("board");
+    board.innerHTML = "";
+    numbers.forEach((number, index) => {
+        const tile = document.createElement("button");
+        tile.className = "tile";
+        if (number === 0) tile.classList.add("empty");
+        else { tile.textContent = number; tile.onclick = () => moveTile(index); }
+        board.appendChild(tile);
+    });
+}
+function moveTile(index) {
+    if (!isGameActive) return;
+    const empty = numbers.indexOf(0), possible = getPossibleMoves(empty);
+    if (possible.includes(index)) {
+        [numbers[index], numbers[empty]] = [numbers[empty], numbers[index]];
+        moves++;
+        document.getElementById("moves").textContent = moves;
+        draw(); checkWin();
+    }
+}
+function checkWin() {
+    for (let i = 0; i < 19; i++) if (numbers[i] !== i + 1) return;
+    isGameActive = false; stopTimer();
+    if (!bestMoves || moves < Number(bestMoves)) {
+        bestMoves = moves;
+        localStorage.setItem('farrokh_best', bestMoves);
+        document.getElementById('best').textContent = bestMoves;
+    }
+    document.getElementById("win-area").innerHTML = `
+        <div class="win-message">
+            🎉 تبریک! پازل حل شد!<br>
+            زمان: ${document.getElementById('timer').textContent} | حرکت‌ها: ${moves}
+        </div>`;
+}
+newGame();
+</script>
+</body>
+</html>
